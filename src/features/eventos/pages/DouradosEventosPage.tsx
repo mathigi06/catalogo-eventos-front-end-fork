@@ -1,168 +1,36 @@
-// src/pages/DouradosPlusPage.tsx
-import React, { useEffect, useMemo, useState } from "react";
-import SideBar from "../componentes/SideBar";
+import React, { useMemo, useState } from "react";
+import { useAppData } from "../../../context/appDataContext";
+import type { Cidade, Evento, PontoTuristico } from "../../../domain";
 import Header from "../componentes/Header";
+import SideBar from "../componentes/SideBar";
+import { Button, Card } from "../../../shared/ui";
+import { EventFilters } from "../componentes/EventFilters";
+import { EventList } from "../componentes/EventList";
+import { TourismSection } from "../componentes/TourismSection";
+import { CitiesSection } from "../componentes/CitiesSection";
+import { EventFormModal } from "../componentes/EventFormModal";
+import { CidadeFormModal } from "../componentes/CidadeFormModal";
+import { PontoFormModal } from "../componentes/PontoFormModal";
 
-type Evento = {
-  id: string;
-  titulo: string;
-  cat: string;
-  data: string; // yyyy-mm-dd
-  hora: string;
-  local: string;
-  preco: string;
-  img: string;
-  desc: string;
-};
-
-type Ponto = {
-  id: string;
-  nome: string;
-  tipo: string;
-  horario: string;
-  img: string;
-  desc: string;
-};
-
-type Cidade = {
-  id: string;
-  nome: string;
-  uf: string;
-  desc: string;
-  pontos: Ponto[];
-};
-
-type AppState = {
-  eventos: Evento[];
-  cidades: Cidade[];
-};
-
-const LS_KEY = "douradosplus-data-v1";
-
-const createId = () => {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-};
-
-const initialData: AppState = {
-  eventos: [
-    {
-      id: createId(),
-      titulo: "Festival Gastronômico do Centro",
-      cat: "Gastronomia",
-      data: "2025-09-20",
-      hora: "18:00",
-      local: "Rua Ponciano, Centro",
-      preco: "Gratuito",
-      img: "https://douradosagora.com.br/media/posts/390241/dourados-tera-neste-sabado-balaio-festival-com-musica-arte-gastronomia-e-cultura-17522582977313.jpg",
-      desc: "Barracas, food trucks e música ao vivo com artistas locais.",
-    },
-    {
-      id: createId(),
-      titulo: "Corrida Parque dos Ipês 10K",
-      cat: "Esporte",
-      data: "2025-10-12",
-      hora: "07:00",
-      local: "Parque dos Ipês",
-      preco: "R$ 60,00",
-      img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTKCBFrpCyTBRz1fdPn65X0mJz6rSRHXCS8tw&s",
-      desc: "Prova de 5K e 10K com kit do atleta e medalha de participação.",
-    },
-    {
-      id: createId(),
-      titulo: "Japão Fest",
-      cat: "Gastronomia",
-      data: "2025-10-12",
-      hora: "07:00",
-      local: "Parque dos Ipês",
-      preco: "R$ 60,00",
-      img: "https://images.squarespace-cdn.com/content/v1/5e79e7f3f72f3e6c9393bcc6/1668453933984-7HOIEANKGOY0Q9SFR18V/0H2A5883.jpg?format=2500w",
-      desc: "Prova de 5K e 10K com kit do atleta e medalha de participação.",
-    },
-  ],
-  cidades: [
-    {
-      id: createId(),
-      nome: "Dourados",
-      uf: "MS",
-      desc: "Segunda maior cidade de MS, polo universitário e cultural.",
-      pontos: [
-        {
-          id: createId(),
-          nome: "Parque dos Ipês",
-          tipo: "Parque",
-          horario: "Livre",
-          img: "https://images.unsplash.com/photo-1526481280698-8fcc13fdcde7?q=80&w=1200&auto=format&fit=crop",
-          desc: "Área verde para caminhada, corrida e lazer ao ar livre.",
-        },
-        {
-          id: createId(),
-          nome: "Praça Antônio João",
-          tipo: "Praça",
-          horario: "24h",
-          img: "https://images.unsplash.com/photo-1587308525991-b8dec88ccbe7?q=80&w=1200&auto=format&fit=crop",
-          desc: "Cartão-postal no centro, palco de feiras e eventos culturais.",
-        },
-        {
-          id: createId(),
-          nome: "Museu Histórico",
-          tipo: "Museu",
-          horario: "Ter–Dom, 9h–17h",
-          img: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?q=80&w=1200&auto=format&fit=crop",
-          desc: "Acervo sobre a história e a formação regional.",
-        },
-      ],
-    },
-    {
-      id: createId(),
-      nome: "Itaporã",
-      uf: "MS",
-      desc: "Cidade vizinha com tradições culturais marcantes.",
-      pontos: [
-        {
-          id: createId(),
-          nome: "Praça Central",
-          tipo: "Praça",
-          horario: "Livre",
-          img: "https://images.unsplash.com/photo-1471623432079-b009d30b6729?q=80&w=1200&auto=format&fit=crop",
-          desc: "Ponto de encontro com feiras e apresentações locais.",
-        },
-      ],
-    },
-  ],
-};
-
-function loadFromStorage(): AppState | null {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed.events && parsed.cidades) {
-      return { eventos: parsed.events, cidades: parsed.cidades };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+type Tab = "eventos" | "turismo" | "cidades";
 
 const formatDate = (d: string) =>
   new Date(`${d}T00:00:00`).toLocaleDateString("pt-BR", {
     timeZone: "America/Campo_Grande",
   });
 
-export const DouradosPlusPage: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>(() => {
-    if (typeof window === "undefined") return initialData;
-    return loadFromStorage() ?? initialData;
-  });
+export const DouradosEventosPage: React.FC = () => {
+  const {
+    state: { eventos, cidades },
+    createOrUpdateEvento,
+    deleteEvento,
+    createOrUpdateCidade,
+    deleteCidade,
+    createOrUpdatePonto,
+    deletePonto,
+  } = useAppData();
 
-  
-  const [activeTab, setActiveTab] = useState<"eventos" | "turismo" | "cidades">(
-    "eventos"
-  );
+  const [tab, setTab] = useState<Tab>("eventos");
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -170,177 +38,96 @@ export const DouradosPlusPage: React.FC = () => {
   const [search, setSearch] = useState("");
   const [cat, setCat] = useState("");
   const [dataMin, setDataMin] = useState("");
-  
-  // modal de evento
-  const [isEventoModalOpen, setIsEventoModalOpen] = useState(false);
-  const [editingEvento, setEditingEvento] = useState<Evento | null>(null);
-  
-  const [isCidadeModalOpen, setIsCidadeModalOpen] = useState(false);
-  const [editingCidade, setEditingCidade] = useState<Cidade | null>(null);
-  
-  const [isPontoModalOpen, setIsPontoModalOpen] = useState(false);
-  const [editingPonto, setEditingPonto] = useState<Ponto | null>(null);
+
+  // turismo
+  const [cidadeSelecionadaId, setCidadeSelecionadaId] = useState<string | null>(
+    () => cidades[0]?.id ?? null
+  );
+  const [buscaPonto, setBuscaPonto] = useState("");
+
+  // modais
+  const [eventoEdit, setEventoEdit] = useState<Evento | null>(null);
+  const [cidadeEdit, setCidadeEdit] = useState<Cidade | null>(null);
+  const [pontoEdit, setPontoEdit] = useState<PontoTuristico | null>(null);
   const [pontoCidadeId, setPontoCidadeId] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(
-      LS_KEY,
-      JSON.stringify({ events: appState.eventos, cidades: appState.cidades })
+
+  const handleSideMenuOpen = () => {
+    setIsSideMenuOpen((prev) => !prev);
+  };
+
+  const handleShowFilters = () => {
+    setShowFilters((prev) => !prev);
+  };
+
+  const eventosFiltrados = useMemo(
+    () =>
+      eventos
+        .slice()
+        .sort((a, b) => a.data.localeCompare(b.data))
+        .filter((ev) => {
+          const okCat = !cat || ev.cat === cat;
+          const okData = !dataMin || ev.data >= dataMin;
+          const txt = `${ev.titulo} ${ev.local} ${ev.cat}`.toLowerCase();
+          const okQ = !search || txt.includes(search.toLowerCase());
+          return okCat && okData && okQ;
+        }),
+    [eventos, cat, dataMin, search]
+  );
+
+  const cidadeSelecionada =
+    cidades.find((c) => c.id === cidadeSelecionadaId) ?? cidades[0];
+
+  const pontosFiltrados = useMemo(() => {
+    if (!cidadeSelecionada) return [];
+    const q = buscaPonto.toLowerCase();
+    return cidadeSelecionada.pontos.filter((p) =>
+      `${p.nome} ${p.tipo}`.toLowerCase().includes(q)
     );
-  }, [appState]);
-    // ====== CRUD de CIDADES ======
+  }, [buscaPonto, cidadeSelecionada]);
 
-  function handleOpenNovaCidade() {
-    setEditingCidade(null);
-    setIsCidadeModalOpen(true);
-  }
+  // === callbacks de CRUD usando o context ===
 
-  function handleEditCidade(cidade: Cidade) {
-    setEditingCidade(cidade);
-    setIsCidadeModalOpen(true);
-  }
+  const handleSalvarEvento = (dados: Omit<Evento, "id"> & { id?: string }) => {
+    createOrUpdateEvento(dados);
+    setEventoEdit(null);
+  };
 
-  function handleDeleteCidade(id: string) {
-    if (!window.confirm("Excluir esta cidade e todos os seus pontos turísticos?")) {
-      return;
-    }
-
-    setAppState((prev) => {
-      const cidades = prev.cidades.filter((c) => c.id !== id);
-
-      // Se a cidade selecionada foi excluída, seleciona outra
-      if (cidadeSelecionadaId === id) {
-        setCidadeSelecionadaId(cidades[0]?.id ?? null);
-      }
-
-      return { ...prev, cidades };
-    });
-  }
-
-  function handleSalvarCidade(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-
-    const nome = (formData.get("nome") as string).trim();
-    const uf = ((formData.get("uf") as string) || "MS").trim();
-    const desc = (formData.get("desc") as string).trim();
-
-    if (!nome) {
-      window.alert("Informe pelo menos o nome da cidade.");
-      return;
-    }
-
-    setAppState((prev) => {
-      let cidades = [...prev.cidades];
-
-      if (editingCidade) {
-        const idx = cidades.findIndex((c) => c.id === editingCidade.id);
-        if (idx >= 0) {
-          const antiga = cidades[idx];
-          cidades[idx] = {
-            ...antiga,
-            nome,
-            uf,
-            desc,
-          };
-        }
-      } else {
-        const novaCidade: Cidade = {
-          id: createId(),
-          nome,
-          uf,
-          desc,
-          pontos: [],
-        };
-        cidades.push(novaCidade);
-      }
-
-      return { ...prev, cidades };
-    });
-
-    setIsCidadeModalOpen(false);
-    setEditingCidade(null);
-  }
-
-
-  const eventosFiltrados = useMemo(() => {
-    return appState.eventos
-      .slice()
-      .sort((a, b) => a.data.localeCompare(b.data))
-      .filter((ev) => {
-        const okCat = !cat || ev.cat === cat;
-        const okData = !dataMin || ev.data >= dataMin;
-        const txt = `${ev.titulo} ${ev.local} ${ev.cat}`.toLowerCase();
-        const okQ = !search || txt.includes(search.toLowerCase());
-        return okCat && okData && okQ;
-      });
-  }, [appState.eventos, cat, dataMin, search]);
-
-  function handleOpenNovoEvento() {
-    setEditingEvento(null);
-    setIsEventoModalOpen(true);
-  }
-
-  function handleEditEvento(ev: Evento) {
-    setEditingEvento(ev);
-    setIsEventoModalOpen(true);
-  }
-
-  function handleDeleteEvento(id: string) {
+  const handleExcluirEvento = (id: string) => {
     if (!window.confirm("Excluir este evento?")) return;
-    setAppState((prev) => ({
-      ...prev,
-      eventos: prev.eventos.filter((e) => e.id !== id),
-    }));
-  }
+    deleteEvento(id);
+  };
 
-  function handleSalvarEvento(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  const handleSalvarCidade = (
+    dados: Omit<Cidade, "id" | "pontos"> & { id?: string }
+  ) => {
+    createOrUpdateCidade(dados);
+    setCidadeEdit(null);
+  };
 
-    const formData = new FormData(e.currentTarget);
-    const titulo = (formData.get("titulo") as string).trim();
-    const catValue = (formData.get("cat") as string) || "Show";
-    const data = (formData.get("data") as string) || "";
-    const hora = (formData.get("hora") as string) || "";
-    const preco =
-      ((formData.get("preco") as string) || "").trim() || "Gratuito";
-    const local = (formData.get("local") as string).trim();
-    const img = (formData.get("img") as string).trim();
-    const desc = (formData.get("desc") as string).trim();
-
-    if (!titulo || !data || !local) {
-      window.alert("Preencha ao menos Título, Data e Local.");
-      return;
+  const handleExcluirCidade = (id: string) => {
+    if (!window.confirm("Excluir esta cidade e todos os seus pontos?")) return;
+    deleteCidade(id);
+    if (cidadeSelecionadaId === id) {
+      const nova = cidades.find((c) => c.id !== id);
+      setCidadeSelecionadaId(nova?.id ?? null);
     }
+  };
 
-    const novo: Evento = {
-      id: editingEvento?.id ?? createId(),
-      titulo,
-      cat: catValue,
-      data,
-      hora,
-      preco,
-      local,
-      img,
-      desc,
-    };
+  const handleSalvarPonto = (
+    cidadeId: string,
+    dados: Omit<PontoTuristico, "id"> & { id?: string }
+  ) => {
+    createOrUpdatePonto(cidadeId, dados);
+    setPontoEdit(null);
+    setPontoCidadeId(null);
+  };
 
-    setAppState((prev) => {
-      const idx = prev.eventos.findIndex((e) => e.id === novo.id);
-      if (idx >= 0) {
-        const clone = [...prev.eventos];
-        clone[idx] = novo;
-        return { ...prev, eventos: clone };
-      }
-      return { ...prev, eventos: [...prev.eventos, novo] };
-    });
+  const handleExcluirPonto = (cidadeId: string, pontoId: string) => {
+    if (!window.confirm("Excluir este ponto turístico?")) return;
+    deletePonto(cidadeId, pontoId);
+  };
 
-    setIsEventoModalOpen(false);
-    setEditingEvento(null);
-  }
-
-  function handleDetalhesEvento(ev: Evento) {
+  const handleDetalhesEvento = (ev: Evento) => {
     window.alert(
       `${ev.titulo}
 ${formatDate(ev.data)} ${ev.hora || ""}
@@ -349,243 +136,63 @@ ${ev.preco}
 
 ${ev.desc}`
     );
-  }
+  };
 
-    // ====== CRUD de PONTOS TURÍSTICOS ======
-
-  function handleOpenNovoPonto() {
-    if (!cidadeSelecionada) {
-      window.alert("Selecione uma cidade primeiro.");
-      return;
-    }
-    setEditingPonto(null);
-    setPontoCidadeId(cidadeSelecionada.id);
-    setIsPontoModalOpen(true);
-  }
-
-  function handleEditPonto(ponto: Ponto) {
-    if (!cidadeSelecionada) return;
-    setEditingPonto(ponto);
-    setPontoCidadeId(cidadeSelecionada.id);
-    setIsPontoModalOpen(true);
-  }
-
-  function handleDeletePonto(pontoId: string) {
-    if (!cidadeSelecionada) return;
-    if (!window.confirm("Excluir este ponto turístico?")) return;
-
-    setAppState((prev) => {
-      const cidades = prev.cidades.map((c) => {
-        if (c.id !== cidadeSelecionada.id) return c;
-        return {
-          ...c,
-          pontos: c.pontos.filter((p) => p.id !== pontoId),
-        };
-      });
-      return { ...prev, cidades };
-    });
-  }
-
-  function handleSalvarPonto(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-
-    const cidadeId =
-      (formData.get("cidadeId") as string) || pontoCidadeId || "";
-
-    if (!cidadeId) {
-      window.alert("Selecione uma cidade para o ponto turístico.");
-      return;
-    }
-
-    const nome = (formData.get("nome") as string).trim();
-    const tipo = (formData.get("tipo") as string).trim();
-    const horario = (formData.get("horario") as string).trim();
-    const img = (formData.get("img") as string).trim();
-    const desc = (formData.get("desc") as string).trim();
-
-    if (!nome) {
-      window.alert("Informe pelo menos o nome do ponto turístico.");
-      return;
-    }
-
-    setAppState((prev) => {
-      const cidades = prev.cidades.map((c) => {
-        if (c.id !== cidadeId) return c;
-
-        const pontos = [...c.pontos];
-
-        if (editingPonto) {
-          const idx = pontos.findIndex((p) => p.id === editingPonto.id);
-          const novo: Ponto = {
-            id: editingPonto.id,
-            nome,
-            tipo,
-            horario,
-            img,
-            desc,
-          };
-          if (idx >= 0) {
-            pontos[idx] = novo;
-          } else {
-            pontos.push(novo);
-          }
-        } else {
-          pontos.push({
-            id: createId(),
-            nome,
-            tipo,
-            horario,
-            img,
-            desc,
-          });
-        }
-
-        return { ...c, pontos };
-      });
-
-      return { ...prev, cidades };
-    });
-
-    setIsPontoModalOpen(false);
-    setEditingPonto(null);
-    setPontoCidadeId(null);
-  }
-
-
-  const cidades = appState.cidades;
-  const [cidadeSelecionadaId, setCidadeSelecionadaId] = useState<string | null>(
-    () => cidades[0]?.id ?? null
-  );
-  const [buscaPonto, setBuscaPonto] = useState("");
-
-  const cidadeSelecionada = useMemo(
-    () => cidades.find((c) => c.id === cidadeSelecionadaId) ?? cidades[0],
-    [cidades, cidadeSelecionadaId]
-  );
-
-  const handleActiveTab = (value: any) => {
-    setActiveTab(value)
-  }
-
-  const handleSideMenuOpen = () => {
-    setIsSideMenuOpen((o) => !o)
-  }
-
-  const handleShowFilters = () => {
-    setShowFilters((f) => !f)
-  }
-
-  const pontosFiltrados = useMemo(() => {
-    if (!cidadeSelecionada) return [];
-    const q = buscaPonto.toLowerCase();
-    return cidadeSelecionada.pontos.filter(
-      (p) => !q || `${p.nome} ${p.tipo}`.toLowerCase().includes(q.toLowerCase())
-    );
-  }, [buscaPonto, cidadeSelecionada]);
-
-  // (Nesta versão, o CRUD de cidades/pontos está só exibindo os dados.
-  // Se você quiser, no próximo passo migramos também os modais e o CRUD deles.)
+  // === UI ===
 
   return (
     <div className="min-h-screen text-[#e9f2ff] bg-slate-950">
-      {/* Overlay de menu lateral */}
+      {/* overlay do menu lateral */}
       {isSideMenuOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
-          onClick={() => setIsSideMenuOpen(false)}
+          onClick={handleSideMenuOpen}
         />
       )}
 
-      {/* Side menu */}
-      <SideBar open={isSideMenuOpen} handleSideMenuOpen={handleSideMenuOpen} handleActiveTab={handleActiveTab} />
+      <SideBar
+        open={isSideMenuOpen}
+        handleSideMenuOpen={handleSideMenuOpen}
+        handleActiveTab={(value) => {
+          setTab(value as Tab);
+          setIsSideMenuOpen(false);
+        }}
+      />
 
-      {/* Header */}
-      <Header open={isSideMenuOpen} handleShowFilters={handleShowFilters} handleSideMenuOpen={handleSideMenuOpen} />
-      
-      {/* Filtros topo */}
+      <Header
+        open={isSideMenuOpen}
+        handleSideMenuOpen={handleSideMenuOpen}
+        handleShowFilters={handleShowFilters}
+      />
+
+      {/* filtros de eventos */}
       {showFilters && (
         <section className="border-b border-white/10 bg-slate-900/80">
           <div className="max-w-5xl mx-auto px-4 py-4">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs tracking-[0.2em] uppercase text-[#9fb0c8] font-semibold mb-3">
-                Busca Rápida
-              </p>
-
-              <div className="flex flex-col md:flex-row gap-3 mb-3">
-                <label className="flex-1 text-sm flex flex-col gap-1">
-                  <span>Pesquisar</span>
-                  <input
-                    className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm outline-none"
-                    placeholder="Busque por título, local, categoria…"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </label>
-
-                <label className="flex-1 text-sm flex flex-col gap-1">
-                  <span>Categoria</span>
-                  <select
-                    className="w-full rounded-xl border border-white/20 bg-slate-800 px-3 py-2 text-sm outline-none"
-                    value={cat}
-                    onChange={(e) => setCat(e.target.value)}
-                  >
-                    <option value="">Todas</option>
-                    <option>Show</option>
-                    <option>Esporte</option>
-                    <option>Feira</option>
-                    <option>Teatro</option>
-                    <option>Gastronomia</option>
-                  </select>
-                </label>
-
-                <label className="flex-1 text-sm flex flex-col gap-1">
-                  <span>A partir de</span>
-                  <input
-                    type="date"
-                    className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm outline-none"
-                    value={dataMin}
-                    onChange={(e) => setDataMin(e.target.value)}
-                  />
-                </label>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold"
-                  onClick={() => {
-                    setActiveTab("eventos");
-                  }}
-                >
-                  Aplicar filtros
-                </button>
-                <button
-                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm"
-                  onClick={() => {
-                    setSearch("");
-                    setCat("");
-                    setDataMin("");
-                  }}
-                >
-                  Limpar
-                </button>
-                <button
-                  className="rounded-xl border border-[#a58cff]/50 bg-gradient-to-r from-[#74f1ff]/30 to-[#a58cff]/30 px-4 py-2 text-sm font-semibold"
-                  onClick={handleOpenNovoEvento}
-                >
-                  + Novo evento
-                </button>
-              </div>
-            </div>
+            <Card className="p-4">
+              <EventFilters
+                search={search}
+                onSearchChange={setSearch}
+                category={cat}
+                onCategoryChange={setCat}
+                dateFrom={dataMin}
+                onDateFromChange={setDataMin}
+                onClear={() => {
+                  setSearch("");
+                  setCat("");
+                  setDataMin("");
+                }}
+                onNewEvent={() => setEventoEdit({} as Evento)}
+              />
+            </Card>
           </div>
         </section>
       )}
 
-      {/* Conteúdo principal */}
       <main className="max-w-5xl mx-auto px-4 pb-16 pt-8">
-        {/* Hero */}
+        {/* hero */}
         <section className="flex flex-col items-center justify-center text-center mb-8">
-          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-white/5 p-6 relative overflow-hidden">
+          <Card className="w-full max-w-3xl p-6 relative overflow-hidden">
             <p className="text-xs tracking-[0.2em] uppercase text-[#9fb0c8] font-semibold">
               Agenda &amp; Guia • Dourados/MS
             </p>
@@ -596,359 +203,122 @@ ${ev.desc}`
               Uma plataforma simples e poderosa para divulgar{" "}
               <strong>eventos</strong>, conhecer{" "}
               <strong>pontos turísticos</strong> e cadastrar informações de{" "}
-              <strong>cidades da região</strong>. Visual inovador, rápido e
-              acessível — agora em React + Tailwind.
+              <strong>cidades da região</strong>.
             </p>
-          </div>
+          </Card>
         </section>
 
-        {/* Tabs */}
+        {/* tabs */}
         <div className="mb-6 flex flex-wrap gap-2">
-          <button
-            className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-              activeTab === "eventos"
-                ? "border-[#a58cff]/60 bg-gradient-to-r from-[#74f1ff]/20 to-[#a58cff]/20"
-                : "border-white/10 bg-white/5"
-            }`}
-            onClick={() => setActiveTab("eventos")}
+          <Button
+            variant={tab === "eventos" ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setTab("eventos")}
           >
             Eventos
-          </button>
-          <button
-            className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-              activeTab === "turismo"
-                ? "border-[#a58cff]/60 bg-gradient-to-r from-[#74f1ff]/20 to-[#a58cff]/20"
-                : "border-white/10 bg-white/5"
-            }`}
-            onClick={() => setActiveTab("turismo")}
+          </Button>
+          <Button
+            variant={tab === "turismo" ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setTab("turismo")}
           >
             Turismo
-          </button>
-          <button
-            className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-              activeTab === "cidades"
-                ? "border-[#a58cff]/60 bg-gradient-to-r from-[#74f1ff]/20 to-[#a58cff]/20"
-                : "border-white/10 bg-white/5"
-            }`}
-            onClick={() => setActiveTab("cidades")}
+          </Button>
+          <Button
+            variant={tab === "cidades" ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setTab("cidades")}
           >
             Cidades
-          </button>
+          </Button>
         </div>
 
-        {/* Painéis */}
-        {activeTab === "eventos" && (
-          <section aria-label="Lista de eventos">
-            {eventosFiltrados.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-[#9fb0c8]">
-                Nenhum evento encontrado. Tente ajustar os filtros.
-              </div>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {eventosFiltrados.map((ev) => (
-                  <article
-                    key={ev.id}
-                    className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 flex flex-col"
-                  >
-                    <img
-                      src={ev.img || ""}
-                      alt="Imagem do evento"
-                      className="h-40 w-full object-cover"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src =
-                          "https://picsum.photos/800/450?blur=2";
-                      }}
-                    />
-                    <div className="p-4 flex-1 flex flex-col gap-2">
-                      <div className="flex items-center justify-between gap-2 text-xs">
-                        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 font-semibold">
-                          {ev.cat}
-                        </span>
-                        <span className="text-[#9fb0c8]">
-                          {formatDate(ev.data)} • {ev.hora || ""}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-extrabold">{ev.titulo}</h3>
-                      <p className="text-xs text-[#9fb0c8]">
-                        {ev.local} • {ev.preco}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                        <button
-                          className="rounded-xl border border-white/10 bg-white/10 px-3 py-1"
-                          onClick={() => handleDetalhesEvento(ev)}
-                        >
-                          Detalhes
-                        </button>
-                        <button
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-1"
-                          onClick={() => handleEditEvento(ev)}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          className="rounded-xl border border-red-500/50 bg-red-500/10 px-3 py-1"
-                          onClick={() => handleDeleteEvento(ev.id)}
-                        >
-                          Excluir
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+        {/* painéis */}
+        {tab === "eventos" && (
+          <EventList
+            eventos={eventosFiltrados}
+            onNewEvent={() => setEventoEdit({} as Evento)}
+            onEditEvent={setEventoEdit}
+            onDeleteEvent={handleExcluirEvento}
+            onDetails={handleDetalhesEvento}
+          />
         )}
 
-        {activeTab === "turismo" && (
-          <section
-            aria-label="Pontos turísticos"
-            className="mt-4 grid gap-4 lg:grid-cols-3"
-          >
-            {/* esquerda: filtros + lista */}
-            <div className="lg:col-span-2 flex flex-col gap-4">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <div className="flex flex-col md:flex-row gap-3 items-stretch">
-                  <label className="flex-1 text-sm flex flex-col gap-1">
-                    <span>Cidade</span>
-                    <select
-                      className="w-full rounded-xl border border-white/20 bg-slate-800 px-3 py-2 text-sm outline-none"
-                      value={cidadeSelecionada?.id ?? ""}
-                      onChange={(e) => setCidadeSelecionadaId(e.target.value)}
-                    >
-                      {cidades.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.nome} - {c.uf}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex-1 text-sm flex flex-col gap-1">
-                    <span>Buscar ponto</span>
-                    <input
-                      className="w-full rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm outline-none"
-                      placeholder="Ex.: Parque, Museu…"
-                      value={buscaPonto}
-                      onChange={(e) => setBuscaPonto(e.target.value)}
-                    />
-                  </label>
-                </div>
-              </div>
-              {/* lista de pontos */}
-              <div className="grid gap-4 md:grid-cols-2">
-                {pontosFiltrados.length === 0 ? (
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-[#9fb0c8] md:col-span-2">
-                    Nenhum ponto encontrado para esta cidade.
-                  </div>
-                ) : (
-                  pontosFiltrados.map((p) => (
-                    <article
-                      key={p.id}
-                      className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 flex flex-col"
-                    >
-                      <img
-                        src={p.img || ""}
-                        alt="Imagem do ponto turístico"
-                        className="h-40 w-full object-cover"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).src =
-                            "https://picsum.photos/800/450?blur=2";
-                        }}
-                      />
-                      <div className="p-4 flex-1 flex flex-col gap-2">
-                        <div className="flex items-center justify-between gap-2 text-xs">
-                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 font-semibold">
-                            {p.tipo || "Ponto"}
-                          </span>
-                          {cidadeSelecionada && (
-                            <span className="text-[#9fb0c8]">
-                              {cidadeSelecionada.nome}/{cidadeSelecionada.uf}
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="text-base font-extrabold">{p.nome}</h3>
-                        <p className="text-xs text-[#9fb0c8]">
-                          Horário: {p.horario || "—"}
-                        </p>
-                      </div>
-                    </article>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* direita: sobre/dica */}
-            <div className="flex flex-col gap-4">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="text-base font-extrabold mb-1">Sobre</h3>
-                <p className="text-xs text-[#9fb0c8]">
-                  Cadastre e gerencie pontos turísticos de Dourados e adicione
-                  cidades da região para ampliar o guia.
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="text-base font-extrabold mb-1">Dica rápida</h3>
-                <p className="text-xs text-[#9fb0c8]">
-                  Em uma próxima evolução, você pode adicionar edição e exclusão
-                  de pontos diretamente nos cartões, usando o mesmo padrão de
-                  modais dos eventos.
-                </p>
-              </div>
-            </div>
-          </section>
+        {tab === "turismo" && (
+          <TourismSection
+            cidades={cidades}
+            cidadeSelecionada={cidadeSelecionada ?? null}
+            cidadeSelecionadaId={cidadeSelecionadaId}
+            onCidadeSelecionadaChange={setCidadeSelecionadaId}
+            buscaPonto={buscaPonto}
+            onBuscaPontoChange={setBuscaPonto}
+            pontosFiltrados={pontosFiltrados}
+            onNovoPonto={() => {
+              if (!cidadeSelecionada) {
+                window.alert("Selecione uma cidade primeiro.");
+                return;
+              }
+              setPontoCidadeId(cidadeSelecionada.id);
+              setPontoEdit({} as PontoTuristico);
+            }}
+            onEditarCidade={(cidade) => setCidadeEdit(cidade)}
+            onEditarPonto={(ponto) => {
+              if (!cidadeSelecionada) return;
+              setPontoCidadeId(cidadeSelecionada.id);
+              setPontoEdit(ponto);
+            }}
+            onExcluirPonto={(pontoId) => {
+              if (!cidadeSelecionada) return;
+              handleExcluirPonto(cidadeSelecionada.id, pontoId);
+            }}
+            onIrParaCidades={() => setTab("cidades")}
+          />
         )}
 
-        {activeTab === "cidades" && (
-          <section aria-label="Cidades da região" className="mt-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {cidades.map((c) => (
-                <article
-                  key={c.id}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-4 flex flex-col gap-2"
-                >
-                  <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 font-semibold">
-                      {c.uf}
-                    </span>
-                    <span className="text-[#9fb0c8]">
-                      {c.pontos.length} ponto(s)
-                    </span>
-                  </div>
-                  <h3 className="text-base font-extrabold">{c.nome}</h3>
-                  <p className="text-xs text-[#9fb0c8]">{c.desc || ""}</p>
-                </article>
-              ))}
-            </div>
-          </section>
+        {tab === "cidades" && (
+          <CitiesSection
+            cidades={cidades}
+            onNovaCidade={() => setCidadeEdit({} as Cidade)}
+            onVerPontos={(cidadeId) => {
+              setCidadeSelecionadaId(cidadeId);
+              setTab("turismo");
+            }}
+            onEditarCidade={(cidade) => setCidadeEdit(cidade)}
+            onExcluirCidade={handleExcluirCidade}
+          />
         )}
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-white/10 py-6 text-center text-xs text-[#9fb0c8]">
         Dourados+ • Projeto Inovador • Turma 2024.45.253 • Senac-MS.
       </footer>
 
-      {/* Modal de Evento */}
-      {isEventoModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="w-full max-w-3xl rounded-2xl border border-white/10 bg-slate-900 p-4 md:p-6">
-            <div className="mb-4 flex items-center justify-between gap-2">
-              <strong className="text-sm md:text-base">
-                {editingEvento ? "Editar evento" : "Novo evento"}
-              </strong>
-              <button
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs"
-                onClick={() => {
-                  setIsEventoModalOpen(false);
-                  setEditingEvento(null);
-                }}
-              >
-                Fechar
-              </button>
-            </div>
+      {/* modais */}
+      <EventFormModal
+        open={!!eventoEdit}
+        initialValue={eventoEdit}
+        onClose={() => setEventoEdit(null)}
+        onSave={handleSalvarEvento}
+      />
 
-            <form
-              className="flex flex-col gap-4 text-sm"
-              onSubmit={handleSalvarEvento}
-            >
-              <div className="flex flex-col md:flex-row gap-3">
-                <label className="flex-1 flex flex-col gap-1">
-                  <span>Título</span>
-                  <input
-                    name="titulo"
-                    defaultValue={editingEvento?.titulo ?? ""}
-                    className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 outline-none"
-                  />
-                </label>
-                <label className="flex-1 flex flex-col gap-1">
-                  <span>Categoria</span>
-                  <select
-                    name="cat"
-                    defaultValue={editingEvento?.cat ?? "Show"}
-                    className="rounded-xl border border-white/20 bg-slate-800 px-3 py-2 outline-none"
-                  >
-                    <option>Show</option>
-                    <option>Esporte</option>
-                    <option>Feira</option>
-                    <option>Teatro</option>
-                    <option>Gastronomia</option>
-                  </select>
-                </label>
-              </div>
+      <CidadeFormModal
+        open={!!cidadeEdit}
+        initialValue={cidadeEdit}
+        onClose={() => setCidadeEdit(null)}
+        onSave={handleSalvarCidade}
+      />
 
-              <div className="flex flex-col md:flex-row gap-3">
-                <label className="flex-1 flex flex-col gap-1">
-                  <span>Data</span>
-                  <input
-                    type="date"
-                    name="data"
-                    defaultValue={editingEvento?.data ?? ""}
-                    className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 outline-none"
-                  />
-                </label>
-                <label className="flex-1 flex flex-col gap-1">
-                  <span>Hora</span>
-                  <input
-                    type="time"
-                    name="hora"
-                    defaultValue={editingEvento?.hora ?? ""}
-                    className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 outline-none"
-                  />
-                </label>
-                <label className="flex-1 flex flex-col gap-1">
-                  <span>Preço</span>
-                  <input
-                    name="preco"
-                    placeholder="Ex.: Gratuito ou R$ 30,00"
-                    defaultValue={editingEvento?.preco ?? ""}
-                    className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 outline-none"
-                  />
-                </label>
-              </div>
-
-              <label className="flex flex-col gap-1">
-                <span>Local</span>
-                <input
-                  name="local"
-                  placeholder="Endereço / bairro"
-                  defaultValue={editingEvento?.local ?? ""}
-                  className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 outline-none"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span>Imagem (URL)</span>
-                <input
-                  name="img"
-                  placeholder="Cole o link da imagem"
-                  defaultValue={editingEvento?.img ?? ""}
-                  className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 outline-none"
-                />
-              </label>
-
-              <label className="flex flex-col gap-1">
-                <span>Descrição</span>
-                <textarea
-                  name="desc"
-                  rows={4}
-                  placeholder="Detalhes do evento…"
-                  defaultValue={editingEvento?.desc ?? ""}
-                  className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 outline-none resize-none"
-                />
-              </label>
-
-              <div className="mt-2 flex justify-end">
-                <button
-                  type="submit"
-                  className="rounded-xl border border-[#a58cff]/60 bg-gradient-to-r from-[#74f1ff]/30 to-[#a58cff]/30 px-4 py-2 text-xs font-semibold"
-                >
-                  Salvar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <PontoFormModal
+        open={!!pontoEdit}
+        initialValue={pontoEdit}
+        cidadeId={pontoCidadeId}
+        cidades={cidades}
+        onClose={() => {
+          setPontoEdit(null);
+          setPontoCidadeId(null);
+        }}
+        onSave={handleSalvarPonto}
+      />
     </div>
   );
 };
